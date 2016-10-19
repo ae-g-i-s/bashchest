@@ -1,0 +1,57 @@
+#!/bin/bash
+
+[ $# -lt 1 ] && {
+	echo "# $(basename $0) [<commands>] <files>"
+	cat <<EOF
+# This is a wrapper around metaflac that makes the most commonly used commands available with a different syntax.
+# Commands:
+# show - expands to '--export-tags-to=-'. Used by default if no command is specified, but a file is present.
+# set <tag> <value> - expands to '--set-tag=TAG=value'
+# rm <tag> - expands to '--remove-tag=TAG'
+EOF
+	exit 0
+}
+
+ARGS=""
+
+while [ $# -gt 1 ]
+do
+	case "$1" in
+		show)
+			ARGS="${ARGS} --export-tags-to=-"
+			shift
+			;;
+		set)
+			[ $# -gt 3 ] || { echo "'set' expects 2 parameters."; exit -2; }
+			TAG=$(echo -n "$2" | sed -e 's/./\U&/g')
+			ARG=$(printf "%q" "--set-tag=${TAG}=$3")
+			ARGS="${ARGS} ${ARG}"
+			shift 3
+			;;
+		rm)
+			[ $# -gt 2 ] || { echo "'rm' expects a parameter."; exit -2; }
+			TAG=$(echo -n "$2" | sed -e 's/./\U&/g')
+			ARG=$(printf "%q" "--remove-tag=${TAG}")
+			ARGS="${ARGS} ${ARG}"
+			shift 2
+			;;
+		*)
+			break;
+			;;
+	esac
+done
+
+[ -z "${ARGS}" ] && ARGS="--export-tags-to=-"
+
+while [ $# -gt 0 ]
+do
+	
+	[ -f "$1" ] || {
+		echo "File not found (or not a regular file): '$1'"
+		exit -1
+	}
+	echo "# $1"
+	ARG=$(printf "%q" "$1")
+	eval metaflac "${ARGS} ${ARG}"
+	shift
+done
